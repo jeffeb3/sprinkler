@@ -3,7 +3,6 @@
 try:
     import RPi.GPIO as GPIO
 
-
     class hwio(object):
 
         def __init__(self):
@@ -20,6 +19,10 @@ try:
         def __del__(self):
             GPIO.cleanup()
 
+        def output(self, pin, state):
+            print 'Changing pin %d to state %r' % (pin, state)
+            GPIO.output(pin, state)
+
 except ImportError:
     class HardwareSim(object):
 
@@ -30,7 +33,6 @@ except ImportError:
             print 'Simulating changing pin %d to state %r' % (pin, state)
 
     hwio = HardwareSim
-    GPIO = HardwareSim()
 
 if __name__ == '__main__':
     import time

@@ -1,0 +1,67 @@
+
+
+.plot-placeholder
+{
+    width : 100%;
+    height : 250px;
+    text-align : center;
+    margin : 0 auto;
+}
+.plot-legend
+{
+    padding-right: 10px;
+}
+
+/* Things in this class are hidden until we connect */
+.connected
+{
+    display : none;
+}
+
+#email_response
+{
+    display: none;
+}
+
+/* Used to remove the number next to the slider.*/
+.no-number .ui-slider-input
+{
+    display : none;
+    width: 0px;
+}
+
+/* Used to remove the space where the number was. */
+.no-number .ui-rangeslider-sliders
+{
+    margin: 0 5px; !important
+}
+
+.logLevelCRITICAL
+{
+    color: RED !important;
+}
+
+.logLevelERROR
+{
+    color: RED !important;
+}
+
+.logLevelWARNING
+{
+    color: orange !important;
+}
+
+.logLevelINFO
+{
+    color: #008ED6 !important;
+}
+
+.logLevelDEBUG
+{
+    color: green !important;
+}
+
+.logTime
+{
+    color: light-yellow !important;
+}
