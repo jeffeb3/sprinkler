@@ -219,6 +219,8 @@ class Web(object):
 
         indexInformation["settings"] = settings.Copy()
 
+        indexInformation["zones"] = ['zone one', 'zone two', 'zone three']
+
         self.log.info("Web page request for '/' from %s", request.remote_addr)
 
         return template('index', **indexInformation)

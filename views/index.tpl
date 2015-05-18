@@ -23,67 +23,42 @@
     <body>
 
         <div data-role="page" id="ContentsPage" data-theme="b">
-            
+
             <div data-role="header">
                 <a href="#ContentsPage" class="ui-btn ui-icon-home ui-btn-icon-left ui-btn-icon-notext">Home</a>
                 <a href="#ConfigurePage" class="ui-btn ui-icon-gear ui-btn-icon-right ui-btn-icon-notext">Config</a>
                 <h1>{{ipaddress}}'s Control</h1>
             </div>
-            
+
             <div data-role="main" class="ui-content">
 
                 <h4 class="connected">Last Update: <span id="now"></span></h4>
                 <h4>Uptime: <span id="uptime_number">?</span></h4>
-                
+
                 <h3 class="status disconnected">Connecting...</h3>
 
-                <div data-role="collapsible" class="heat" data-collapsed="true">
-                    <h1>Heat to: <span class="heatSetPoint">?</span>&degF <span id="heatStatus" style="color:#FF4444"> ... ON!</span></h1>
+                <div data-role="collapsible" data-collapsed="true">
+                    <h1>Active Zone: <span id="activeZone">?</span> <span id="onStatus" style="color:#4444FF"> ... ON!</span></h1>
 
-                    <fieldset data-role="controlgroup" data-type="horizontal">
-                        <input type="button" id="heatOverrideMinus" value="-"/>
-                        <input type="button" id="heatOverridePlus"  value="+"/>
-                    </fieldset>
                     <fieldset data-role="controlgroup">
-                        <label for="heatOverrideTemporary">Temporary Override</label>
-                        <input type="radio" name="heatOverrideType" id="heatOverrideTemporary" value="temp" />
-                        <label for="heatOverridePermanent">Vacation Override</label>
-                        <input type="radio" name="heatOverrideType" id="heatOverridePermanent" value="perm" />
+                    % for zone in zones:
+                    %     zoneVar = zone.replace(' ','')
+                        <label for="override{{zoneVar}}">Turn On {{zone}} ({{zoneVar}})</label>
+                        <input type="radio" name="override{{zoneVar}}" id="override{{zoneVar}}" value="over" />
+                    % end
                     </fieldset>
                     <input type="button" id="heatClearOverride" value="Clear" />
                 </div>
-                
-                <div data-role="collapsible" class="cool" data-collapsed="true">
-                    <h1>Cool to: <span class="coolSetPoint">?</span>&degF <span id="coolStatus" style="color:#FF4444"> ... ON!</span></h1>
 
-                    <fieldset data-role="controlgroup" data-type="horizontal">
-                        <input type="button" id="coolOverrideMinus" value="-"/>
-                        <input type="button" id="coolOverridePlus"  value="+"/>
-                    </fieldset>
-                    <fieldset data-role="controlgroup">
-                        <label for="coolOverrideTemporary">Temporary Override</label>
-                        <input type="radio" name="coolOverrideType" id="coolOverrideTemporary" value="temp" />
-                        <label for="coolOverridePermanent">Vacation Override</label>
-                        <input type="radio" name="coolOverrideType" id="coolOverridePermanent" value="perm" />
-                    </fieldset>
-                    <input type="button" id="coolClearOverride" value="Clear" />
-                </div>
-                
                 <a href="#" data-role="button" data-inline="true" id="plotTimeAll">All</a>
                 <a href="#" data-role="button" data-inline="true" id="plotTimeDay">Day</a>
                 <a href="#" data-role="button" data-inline="true" id="plotTimeHour">Hour</a>
                 <a href="#" data-role="button" data-inline="true" id="plotTimeMinutes">Minutes</a>
 
                 <div data-role="collapsible" data-collapsed="false">
-                    <h1>In: <span id="temperature">?</span> &degF Out: <span id="outsideTemperature">?</span>&degF</h1>
-                    <div id="tempPlaceholder" class="plot-placeholder ui-body-inherit"></div>
-                    <div id="tempLegend"      class="legend-placeholder ui-body-inherit"></div>
-                </div>
-
-                <div data-role="collapsible" data-collapsed="false">
-                    <h1>Set Point</h1>
-                    <div id="logicPlaceholder" class="plot-placeholder ui-body-inherit"></div>
-                    <div id="logicLegend"      class="legend-placeholder ui-body-inherit"></div>
+                    <h1>Watering History</h1>
+                    <div id="placeholder" class="plot-placeholder ui-body-inherit"></div>
+                    <div id="legend"      class="legend-placeholder ui-body-inherit"></div>
                 </div>
 
                 <div data-role="collapsible" data-collapsed="true">
@@ -117,27 +92,25 @@
                 </div>
 
             </div>
-            
+
             <div data-role="footer"><h1></h1></div>
-            
+
         </div>
 
         <form data-role="page" id="ConfigurePage" data-theme="b" action="/settings" method="post">
-            
+
             <div data-role="header">
                 <a href="#ContentsPage" onclick="$('#ConfigurePage').submit()" class="ui-btn ui-icon-check ui-btn-icon-left ui-btn-icon-notext">Save</a>
                 <h1>Configuration</h1>
                 <a href="#ContentsPage" id="ConfigurePageResetButton" class="ui-btn ui-icon-delete ui-btn-icon-right ui-btn-icon-notext">Reset</a>
             </div>
-            
+
             <div data-role="main" class="ui-content">
-        
+
                 <div data-role="collapsible" data-collapsed="true">
                     <h1>General</h1>
-                    <label for="doHeat">Enable Heat:</label>
+                    <label for="doHeat">Enable Watering:</label>
                     <input type="checkbox" data-role="flipswitch" name="doHeat" id="doHeat" value=1 checked="true">
-                    <label for="doCool">Enable A/C:</label>
-                    <input type="checkbox" data-role="flipswitch" name="doCool" id="doCool" value=1 checked="true">
                 </div>
 
                 <div data-role="collapsible">
@@ -221,8 +194,8 @@
                     <input type="text" name="weather_city" id="weather_city" placeholder="Denver" data-clear-btn="true"></input>
                     <label for="weather_api_key">API key for <a href="http://www.wunderground.com/weather/api/d/pricing.html" class="ui-btn ui-btn-inline">Wunderground.com </a></label>
                     <input type="text" name="weather_api_key" id="weather_api_key" data-clear-btn="true"></input>
-                    
-                </div>        
+
+                </div>
 
                 <div data-role="collapsible" data-collapsed="true">
                     <h1>Thing Speak</h1>
@@ -234,14 +207,14 @@
                     <input type="text" name="thingspeak_location_api_key" id="thingspeak_location_api_key" data-clear-btn="true"></input>
                     <label for="thingspeak_location_channel">Channel for <a href="http://thinkspeak.com" class="ui-btn ui-btn-inline">thingspeak.com </a> location awareness.</label>
                     <input type="text" name="thingspeak_location_channel" id="thingspeak_location_channel" data-clear-btn="true"></input>
-                </div>        
+                </div>
 
                 <div data-role="collapsible" data-collapsed="true">
                     <h1>Advanced</h1>
                     <h1>JUST WHO DO YOU THINK YOU ARE?</h1>
-                </div>        
+                </div>
             </div>
-            
+
             <div data-role="footer"><h1></h1></div>
 
         </form>

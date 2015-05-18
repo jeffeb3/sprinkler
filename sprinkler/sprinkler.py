@@ -2,6 +2,7 @@
 # The place where the thermostat runs.
 
 # system imports
+import bisect
 import commands
 import copy
 import datetime
@@ -64,7 +65,7 @@ class Sprinkler(threading.Thread):
         self.outsideTemp = 0
 
         # state data history
-        self.plotData = deque([], 60/5*24)
+        self.plotData = deque([], 60/5*72)
         self.recentHistory = deque([], 10) # deque will only keep maxlen items. I'm shooting for five minutes
         self.plotDataLock = threading.RLock()
 
@@ -103,6 +104,8 @@ class Sprinkler(threading.Thread):
                         self.log.exception(e)
                         pass
 
+                active_zone = self.GetCurrentZone()
+
                 # ping the server
                 # heartbeat = json.load(urllib2.urlopen("http://" + settings.Get("arduino_addr") + "/arduino/heartbeat"));
 
@@ -121,6 +124,10 @@ class Sprinkler(threading.Thread):
                 data["outside_temp_updated"] = outsideTempUpdated
                 data["sleeping"] = self.sleeping
                 data["away"] = self.away
+                data["active_zone"] = active_zone
+                if active_zone is None:
+                    # I need a float to be able to plot it and stuff.
+                    data["active_zone"] = 0
 
                 # convert some things to float
                 data["temperature"] = 0.0 # float(data["temperature"])
@@ -147,7 +154,7 @@ class Sprinkler(threading.Thread):
                     self.log.exception(e)
 
                 # Calculate what the set point should be
-                
+
                 # setRange = self.getSetTemperatureRange()
 
                 # send the set point to the arduino
@@ -193,6 +200,50 @@ class Sprinkler(threading.Thread):
                 data['humidity'] = sumHumidity / len(self.recentHistory)
 
                 self.plotData.append(data)
+
+    def ComputeProgram(self):
+        # TODO get these from the config file/settings instead.
+        zones = [1, 2, 3, 4]
+        minutes = [30, 21, 0, 15]
+        starttime = 120
+        cycles = 3
+
+        program = {}
+
+        for cycle in range(cycles):
+          for idx, minute in enumerate(minutes):
+            if minute <= 0:
+              continue
+            time = starttime
+            starttime += minute / cycles
+
+            program[time] = idx + 1
+        program[starttime] = None
+
+        return program
+
+    def GetCurrentZone(self):
+        now = datetime.datetime.now()
+        day = settings.DAYS[(now.weekday() + 1) % 7] # python says 0 is Monday.
+        # TODO figure out which days to water. based on lots of stuff.
+        if day != 1 and day != 4: # Monday or Thursday
+            return None
+
+        # returns a zone (positive integer) or zero
+        program = self.ComputeProgram()
+        program_times = program.keys()
+        program_times.sort()
+
+        minutes = now.minute + 60*now.hour
+
+        # use bisect to find the "insertion point"
+        index = bisect.bisect(program_times, minutes)
+        if not index:
+            # We haven't reached the starttime yet
+            return None
+
+        # return active zone, which is index - 1. This is the less than equal:
+        return program[program_times - 1]
 
     def getSetTemperatureRange(self):
         now = datetime.datetime.now()
@@ -329,15 +380,7 @@ class Sprinkler(threading.Thread):
         # store this information in key-value pairs so that the template engine can find them.
         updaterInfo = \
         {
-            "temperatureHistory" : '',
-            "outsideTempHistory" : '',
-            "heatHistory" : '',
-            "coolHistory" : '',
-
-            "setHeatHistory" : '',
-            "setCoolHistory" : '',
-            "homeHistory" : '',
-            "sleepHistory" : '',
+            "zoneHistory" : '',
 
             "updateTimeHistory" : '',
             "memHistory" : '',
@@ -345,15 +388,7 @@ class Sprinkler(threading.Thread):
 
         with self.plotDataLock:
             for data in self.plotData:
-                updaterInfo['temperatureHistory']   += '[ %f, %f],' % (data["time"] - (time.timezone * 1000.0), data["temperature"])
-                if data["outside_temp_updated"]:
-                    updaterInfo['outsideTempHistory']   += '[ %f, %f],' % (data["time"] - (time.timezone * 1000.0), data["outside_temp"])
-                updaterInfo['heatHistory']          += '[ %f, %d],' % (data["time"] - (time.timezone * 1000.0), data["heat"])
-                updaterInfo['coolHistory']          += '[ %f, %d],' % (data["time"] - (time.timezone * 1000.0), data["cool"])
-                updaterInfo['setHeatHistory']       += '[ %f, %d],' % (data["time"] - (time.timezone * 1000.0), data["heatSetPoint"])
-                updaterInfo['setCoolHistory']       += '[ %f, %d],' % (data["time"] - (time.timezone * 1000.0), data["coolSetPoint"])
-                updaterInfo['homeHistory']          += '[ %f, %d],' % (data["time"] - (time.timezone * 1000.0), 1 - data["away"])
-                updaterInfo['sleepHistory']         += '[ %f, %d],' % (data["time"] - (time.timezone * 1000.0), data["sleeping"])
+                updaterInfo['zoneHistory']   += '[ %f, %f],' % (data["time"] - (time.timezone * 1000.0), data["active_zone"])
                 updaterInfo['updateTimeHistory']    += '[ %f, %d],' % (data["time"] - (time.timezone * 1000.0), data["lastUpdateTime"])
                 updaterInfo['memHistory']           += '[ %f, %d],' % (data["time"] - (time.timezone * 1000.0), data["linux_free_mem_perc"])
 

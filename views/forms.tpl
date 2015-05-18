@@ -8,19 +8,18 @@ $(document).ready(function()
 {
     // Propogate the settings from the settings page.
     updateSettings();
-    
+
     function updateSettings()
     {
         $.get("settings", function(data)
         {
             settings = JSON.parse(data);
             $("#doHeat").prop("checked",settings.doHeat);
-            $("#doCool").prop("checked",settings.doCool);
-            
+
             $("#heatTempComfortable").val(settings.heatTempComfortable);
             $("#heatTempSleeping").val(settings.heatTempSleeping);
             $("#heatTempAway").val(settings.heatTempAway);
-            
+
             $("#coolTempComfortable").val(settings.coolTempComfortable);
             $("#coolTempSleeping").val(settings.coolTempSleeping);
             $("#coolTempAway").val(settings.coolTempAway);
@@ -36,7 +35,7 @@ $(document).ready(function()
             $("#weather_api_key").val(settings.weather_api_key);
             $("#weather_state").val(settings.weather_state);
             $("#weather_city").val(settings.weather_city);
-            
+
             $("#doThingspeak").prop("checked", settings.doThingspeak);
             $("#thingspeak_api_key").val(settings.thingspeak_api_key);
             $("#thingspeak_location_api_key").val(settings.thingspeak_location_api_key);
@@ -47,7 +46,7 @@ $(document).ready(function()
         });
     }
 
-    // reset the settings when the 'X' is clicked.    
+    // reset the settings when the 'X' is clicked.
     $("#ConfigurePageResetButton").on('click', updateSettings);
 
     // change the form the the cool or heat are selected.
@@ -64,7 +63,7 @@ $(document).ready(function()
         {
             $(".heat").hide();
         }
-        
+
         // hide/show all the cool controls.
         if ($("#doCool").is(":checked"))
         {
@@ -73,7 +72,7 @@ $(document).ready(function()
         else
         {
             $(".cool").hide();
-        }        
+        }
 
         // hide/show all the email controls.
         if ($("#doEmail").is(":checked"))
@@ -91,7 +90,7 @@ $(document).ready(function()
     {
         var heat = parseFloat($(".heatSetPoint").text());
         var cool = parseFloat($(".coolSetPoint").text());
-        
+
         if ($(this).attr('id') == 'heatOverrideMinus')
         {
             heat -= 1.0;
@@ -129,7 +128,7 @@ $(document).ready(function()
         {
             $("#heatOverridePermanent").prop('checked',true);
         }
-        
+
         if ($(this).attr('id') == 'heatClearOverride' ||
             $(this).attr('id') == 'coolClearOverride')
         {
@@ -149,11 +148,11 @@ $(document).ready(function()
                 $("#coolOverrideTemporary").prop('checked',true);
             }
         }
-        
+
         $('input[name="heatOverrideType"]').checkboxradio('refresh');
         $('input[name="coolOverrideType"]').checkboxradio('refresh');
 
-        
+
         $.ajax(
         {
             url: '/action',
@@ -216,9 +215,9 @@ $(document).ready(function()
             minutes = "0" + minutes;
         }
 
-        return hours + ":" + minutes + time;        
+        return hours + ":" + minutes + time;
     }
-    
+
     function sliderTime()
     {
         var sliders = $(this).children("input");
