@@ -117,7 +117,7 @@ $(document).ready(function()
             // Update the plots
             sprinklerPlotData[0].data.push([data.time - {{timezone}},data.active_zone]);
 
-            healthPlotData[0].data.push([data.time - {{timezone}},data.lastUpdateTime]);
+            healthPlotData[0].data.push([data.time - {{timezone}},data.py_uptime_ms]);
             healthPlotData[1].data.push([data.time - {{timezone}},data.linux_free_mem_perc]);
 
             sprinkerPlot.setData(sprinklerPlotData);

@@ -120,25 +120,15 @@ class Web(object):
 
     def action(self):
         ''' This method gets called from the ajax calls in javascript to do things from the forms. '''
-        pass # todo
-        # heatSetPoint = float(request.forms.get('heat'))
-        # coolSetPoint = float(request.forms.get('cool'))
-        # temporary = request.forms.get('temporary') == 'true'
-        # permanent = request.forms.get('permanent') == 'true'
-        # self.sprinkler.setOverride((heatSetPoint, coolSetPoint), temporary, permanent)
+        zone = int(request.forms.get('zone'))
+        self.log.info("received override request to set the zone to %d", zone)
+        if zone <= 0:
+            zone = None
+        self.sprinkler.setOverride(zone)
 
     def settings_post(self):
         ''' When the user "saves" their settings on the ConfigurePage. '''
-        settings.Set("doHeat",  bool(request.forms.get('doHeat', False)))
-        settings.Set("doCool",  bool(request.forms.get('doCool', False)))
-
-        settings.Set("heatTempComfortable",  float(request.forms.get('heatTempComfortable')))
-        settings.Set("heatTempSleeping",  float(request.forms.get('heatTempSleeping')))
-        settings.Set("heatTempAway",  float(request.forms.get('heatTempAway')))
-
-        settings.Set("coolTempComfortable",  float(request.forms.get('coolTempComfortable')))
-        settings.Set("coolTempSleeping",  float(request.forms.get('coolTempSleeping')))
-        settings.Set("coolTempAway",  float(request.forms.get('coolTempAway')))
+        settings.Set("doWater",  bool(request.forms.get('doWater', False)))
 
         settings.Set("doEmail",  bool(request.forms.get('doEmail', False)))
         settings.Set("smtp",  request.forms.get('smtp'))
@@ -158,10 +148,6 @@ class Web(object):
         settings.Set("thingspeak_api_key",  request.forms.get('thingspeak_api_key'))
         settings.Set("thingspeak_location_api_key",  request.forms.get('thingspeak_location_api_key'))
         settings.Set("thingspeak_location_channel",  request.forms.get('thingspeak_location_channel'))
-
-        for day in settings.DAYS:
-            settings.Set(day + "Morn",  int(request.forms.get(day + "Morn")))
-            settings.Set(day + "Night",  int(request.forms.get(day + "Night")))
 
         self.updateEmailHandler()
 
@@ -211,15 +197,9 @@ class Web(object):
         indexInformation["days"] = settings.DAYS
 
         # replace parts of views/index.tpl with the information in the indexInformation dictionary.
-        times = {}
-        for day in settings.DAYS:
-            times[day + 'Morn'] = Web.minutesToText(settings.Get(day + 'Morn'))
-            times[day + 'Night'] = Web.minutesToText(settings.Get(day + 'Night'))
-        indexInformation["times"] = times
-
         indexInformation["settings"] = settings.Copy()
 
-        indexInformation["zones"] = ['zone one', 'zone two', 'zone three']
+        indexInformation["zones"] = self.sprinkler.zones
 
         self.log.info("Web page request for '/' from %s", request.remote_addr)
 

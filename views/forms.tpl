@@ -14,15 +14,7 @@ $(document).ready(function()
         $.get("settings", function(data)
         {
             settings = JSON.parse(data);
-            $("#doHeat").prop("checked",settings.doHeat);
-
-            $("#heatTempComfortable").val(settings.heatTempComfortable);
-            $("#heatTempSleeping").val(settings.heatTempSleeping);
-            $("#heatTempAway").val(settings.heatTempAway);
-
-            $("#coolTempComfortable").val(settings.coolTempComfortable);
-            $("#coolTempSleeping").val(settings.coolTempSleeping);
-            $("#coolTempAway").val(settings.coolTempAway);
+            $("#doWater").prop("checked",settings.doWater);
 
             $("#doEmail").prop("checked", settings.doEmail);
             $("#smtp").val(settings.smtp);
@@ -50,29 +42,16 @@ $(document).ready(function()
     $("#ConfigurePageResetButton").on('click', updateSettings);
 
     // change the form the the cool or heat are selected.
-    $("#doHeat, #doCool, #doEmail").change(updateEnabled);
+    $("#doEmail").change(updateEnabled);
 
     function updateEnabled()
     {
-        // hide/show all the heat controls.
-        if ($("#doHeat").is(":checked"))
-        {
-            $(".heat").show();
-        }
-        else
-        {
-            $(".heat").hide();
-        }
 
-        // hide/show all the cool controls.
-        if ($("#doCool").is(":checked"))
-        {
-            $(".cool").show();
-        }
-        else
-        {
-            $(".cool").hide();
-        }
+
+        
+        // TODO This is where we will notify the user that the spriklers are disabled.
+
+
 
         // hide/show all the email controls.
         if ($("#doEmail").is(":checked"))
@@ -86,72 +65,9 @@ $(document).ready(function()
     }
 
     // man, this function is ugly.
-    $("#heatOverrideMinus, #heatOverridePlus, #heatClearOverride, #coolOverrideMinus, #coolOverridePlus, #coolClearOverride, #heatOverrideTemporary, #heatOverridePermanent, #coolOverrideTemporary, #coolOverridePermanent").on('click', function()
+    $(".overrideZones, #clearOverride").on('click', function()
     {
-        var heat = parseFloat($(".heatSetPoint").text());
-        var cool = parseFloat($(".coolSetPoint").text());
-
-        if ($(this).attr('id') == 'heatOverrideMinus')
-        {
-            heat -= 1.0;
-            $(".heatSetPoint").text(heat.toPrecision(3))
-        }
-        if ($(this).attr('id') == 'heatOverridePlus')
-        {
-            heat += 1.0;
-            $(".heatSetPoint").text(heat.toPrecision(3))
-        }
-        if ($(this).attr('id') == 'heatOverrideTemporary')
-        {
-            $("#coolOverrideTemporary").prop('checked',true);
-        }
-        if ($(this).attr('id') == 'heatOverridePermanent')
-        {
-            $("#coolOverridePermanent").prop('checked',true);
-        }
-
-        if ($(this).attr('id') == 'coolOverrideMinus')
-        {
-            cool -= 1.0;
-            $(".coolSetPoint").text(cool.toPrecision(3))
-        }
-        if ($(this).attr('id') == 'coolOverridePlus')
-        {
-            cool += 1.0;
-            $(".coolSetPoint").text(cool.toPrecision(3))
-        }
-        if ($(this).attr('id') == 'coolOverrideTemporary')
-        {
-            $("#heatOverrideTemporary").prop('checked',true);
-        }
-        if ($(this).attr('id') == 'coolOverridePermanent')
-        {
-            $("#heatOverridePermanent").prop('checked',true);
-        }
-
-        if ($(this).attr('id') == 'heatClearOverride' ||
-            $(this).attr('id') == 'coolClearOverride')
-        {
-            $("#heatOverrideTemporary").prop('checked',false);
-            $("#heatOverridePermanent").prop('checked',false);
-            $("#coolOverrideTemporary").prop('checked',false);
-            $("#coolOverridePermanent").prop('checked',false);
-        }
-        else
-        {
-            // This is a case where we need to have something checked.
-            if (!$("#heatOverrideTemporary").prop('checked') &&
-                !$("#heatOverridePermanent").prop('checked'))
-            {
-                // set it to temporary, for now.
-                $("#heatOverrideTemporary").prop('checked',true);
-                $("#coolOverrideTemporary").prop('checked',true);
-            }
-        }
-
-        $('input[name="heatOverrideType"]').checkboxradio('refresh');
-        $('input[name="coolOverrideType"]').checkboxradio('refresh');
-
+        zone = $(this).data('zone');
 
         $.ajax(
         {
@@ -159,10 +75,8 @@ $(document).ready(function()
             type: 'POST',
             data:
             {
-                heat:heat,
-                cool:cool,
-                temporary:$("#heatOverrideTemporary").prop('checked'),
-                permanent:$("#heatOverridePermanent").prop('checked'),
+                strId:"sprinklerOverride",
+                zone:zone,
             }
         });
     });

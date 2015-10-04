@@ -17,6 +17,9 @@ try:
             GPIO.output(12,True)
 
         def __del__(self):
+            self.cleanup()
+
+        def cleanup(self):
             GPIO.cleanup()
 
         def output(self, pin, state):

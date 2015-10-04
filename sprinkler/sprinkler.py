@@ -1,5 +1,5 @@
 
-# The place where the thermostat runs.
+# The place where the sprinkler runs.
 
 # system imports
 import bisect
@@ -14,18 +14,28 @@ import urllib
 import urllib2
 from collections import deque
 
+from email_utils import sendemail
+
 # local imports
 import settings
 from hwio import hwio
 
+# zones is a map from a zone number to a pin number and name.
+zones = {
+    1:(3, "Front Yard"), # Front
+    2:(5, "Back Yard North"), # Back North
+    4:(12, "Back Yard South"), # Back South
+    3:(7, "Back Yard Trees") # Way back
+    }
+
 def uptime():
-    ''' get this system's seconds since starting '''
+    ''' get this system's seconds since starting. Apparently this works with cygwin. '''
     with open('/proc/uptime', 'r') as f:
         uptime_seconds = float(f.readline().split()[0])
         return uptime_seconds
 
 def freeMem():
-    ''' get this system's free memory (unix only, sorry).'''
+    ''' get this system's free memory (unix and cygwin supported).'''
     text = commands.getoutput('free -m').split('\n')
     for line in text:
         if '-/+ buffers' in line:
@@ -54,15 +64,15 @@ class Sprinkler(threading.Thread):
         self.lastOutsideMeasurementTime = 0
 
         # state
-        self.sleeping = False
-        self.away = False
-        self.temperatureRange = (0.0, 0.0)
-        self.overrideTemperatureRange = None
-        self.overrideTemperatureType = None
+        self.previous_zone = None
         self.startTime = time.time()
 
         # cache
         self.outsideTemp = 0
+        self.override = 0
+        self.overrideTime = time.time()
+
+        self.zones = zones
 
         # state data history
         self.plotData = deque([], 60/5*72)
@@ -71,6 +81,15 @@ class Sprinkler(threading.Thread):
 
         # log
         self.log = logging.getLogger(__name__)
+
+        # hwio
+        self.hwio = hwio()
+
+        #try:
+        #    sendemail(settings.Get("email_from"), settings.Get("email_to").split(','), [],'Sprinklers restarted', '', settings.Get("email_from"), settings.Get("email_passw"))
+        #except Exception as e:
+        #    # swallow any exceptions, we don't want the sprinkler to break if there is no Internet
+        #    self.log.exception(e)
 
     def run(self):
         """
@@ -100,48 +119,25 @@ class Sprinkler(threading.Thread):
                         outsideTempUpdated = True
                         self.lastOutsideMeasurementTime = time.time()
                     except Exception as e:
-                        # swallow any exceptions, we don't want the thermostat to break if there is no Internet
+                        # swallow any exceptions, we don't want the sprinkler to break if there is no Internet
                         self.log.exception(e)
                         pass
 
                 active_zone = self.GetCurrentZone()
 
-                # ping the server
-                # heartbeat = json.load(urllib2.urlopen("http://" + settings.Get("arduino_addr") + "/arduino/heartbeat"));
-
-
-                # Do the sprinkling here, I think.
-
-
-                # Get data from server.
-                # data = json.load(urllib2.urlopen("http://" + settings.Get("arduino_addr") + "/data/get/"));
-                data = {} # data["value"]
+                data = {}
                 data["time"] = time.time() * 1000.0
                 data["linux_uptime_ms"] = uptime() * 1000.0
                 data["linux_free_mem_perc"] = freeMem() * 100.0
                 data["py_uptime_ms"] = (time.time() - self.startTime) * 1000.0
                 data["outside_temp"] = self.outsideTemp
                 data["outside_temp_updated"] = outsideTempUpdated
-                data["sleeping"] = self.sleeping
-                data["away"] = self.away
                 data["active_zone"] = active_zone
                 if active_zone is None:
                     # I need a float to be able to plot it and stuff.
                     data["active_zone"] = 0
 
-                # convert some things to float
-                data["temperature"] = 0.0 # float(data["temperature"])
-                data["humidity"] = 0 # float(data["humidity"])
-                data["uptime_ms"] = 0 # float(data["uptime_ms"])
-                data["heatSetPoint"] = 0 # float(data["heatSetPoint"])
-                data["coolSetPoint"] = 0 # float(data["coolSetPoint"])
-                data["lastUpdateTime"] = 0 # float(data["lastUpdateTime"])
-                data["heat"] = 0 # int(data["heat"])
-                data["cool"] = 0 # int(data["cool"])
-
-                data["uptime_ms"] = 0 # heartbeat["uptime_ms"]
-
-                self.log.debug('Arduino (%.1fs) -- T: %.1f H: %.1f', data["lastUpdateTime"] / 1000.0, data["temperature"], data["humidity"])
+                self.log.debug('Active Zone: %d', data['active_zone'])
 
                 with self.plotDataLock:
                     self.recentHistory.append(data)
@@ -153,12 +149,8 @@ class Sprinkler(threading.Thread):
                 except Exception as e:
                     self.log.exception(e)
 
-                # Calculate what the set point should be
-
-                # setRange = self.getSetTemperatureRange()
-
-                # send the set point to the arduino
-                # urllib2.urlopen("http://" + settings.Get("arduino_addr") + "/arduino/command/" + str(setRange[0]) + "/" + str(setRange[1]))
+                if active_zone != self.previous_zone:
+                    self.actuateZone(active_zone)
 
             except Exception as e:
                 self.log.exception(e)
@@ -172,61 +164,52 @@ class Sprinkler(threading.Thread):
             if len(self.plotData) == 0 or self.recentHistory[0]['time'] > self.plotData[-1]['time']:
                 self.log.debug('updating plot data, len %d', len(self.plotData))
                 data = copy.deepcopy(self.recentHistory[-1])
-
-                # average some of the data
-                sumOutsideTemp = 0.0
-                countOutsideTemp = 0
-                sumTemperature = 0.0
-                sumHumidity = 0.0
-                for pt in self.recentHistory:
-                    sumTemperature += pt['temperature']
-                    sumHumidity += pt['humidity']
-
-                    if pt['outside_temp_updated']:
-                        sumOutsideTemp += pt['outside_temp']
-                        countOutsideTemp += 1
-
-                    if pt['heat']:
-                        data['heat'] = True
-
-                    if pt['cool']:
-                        data['cool'] = True
-
-                if countOutsideTemp > 0:
-                    data['outside_temp'] = sumOutsideTemp / countOutsideTemp
-                    data['outside_temp_updated'] = True
-
-                data['temperature'] = sumTemperature / len(self.recentHistory)
-                data['humidity'] = sumHumidity / len(self.recentHistory)
-
                 self.plotData.append(data)
 
     def ComputeProgram(self):
         # TODO get these from the config file/settings instead.
         zones = [1, 2, 3, 4]
-        minutes = [30, 21, 0, 15]
-        starttime = 120
+        minutes = [36, 27, 0, 21]
+        starttime = 10
         cycles = 3
 
         program = {}
 
         for cycle in range(cycles):
-          for idx, minute in enumerate(minutes):
-            if minute <= 0:
-              continue
-            time = starttime
-            starttime += minute / cycles
+            for idx, minute in enumerate(minutes):
+                if minute <= 0:
+                    continue
+                time = starttime
+                starttime += minute / cycles
 
-            program[time] = idx + 1
+                program[time] = idx + 1
         program[starttime] = None
 
         return program
 
+    def setOverride(self, zone):
+        """ Overrides whatever is currently being activated. This also can clear the override if sent with a None."""
+        self.override = zone
+        self.overrideTime = time.time()
+        self.actuateZone(zone)
+
     def GetCurrentZone(self):
+
+        if self.override is not None and self.override > 0:
+            if time.time() - self.overrideTime > 600.0:
+                self.log.info("Clearing the override, because it's been %f seconds in this override state.", time.time() - self.overrideTime)
+                self.override = 0
+            else:
+                return self.override
+
+        if not settings.Get("doWater"):
+            self.log.debug("Not watering because it's been disabled")
+            return None
+
         now = datetime.datetime.now()
         day = settings.DAYS[(now.weekday() + 1) % 7] # python says 0 is Monday.
         # TODO figure out which days to water. based on lots of stuff.
-        if day != 1 and day != 4: # Monday or Thursday
+        if day != 'Sunday' and day != 'Wednesday' and day != 'Friday':
             return None
 
         # returns a zone (positive integer) or zero
@@ -243,100 +226,21 @@ class Sprinkler(threading.Thread):
             return None
 
         # return active zone, which is index - 1. This is the less than equal:
-        return program[program_times - 1]
+        return program[program_times[index - 1]]
 
-    def getSetTemperatureRange(self):
-        now = datetime.datetime.now()
-        day = settings.DAYS[(now.weekday() + 1) % 7] # python says 0 is Monday.
-
-        wakeUp = settings.Get(day + 'Morn')
-        sleep = settings.Get(day + 'Night')
-
-        minutes = now.minute + 60*now.hour
-        if minutes < wakeUp:
-            # we are still asleep
-            if not self.sleeping:
-                self.log.info('Started Sleeping')
-                self.clearOverride()
-            self.sleeping = True
-        elif minutes < sleep:
-            # we are just waking up
-            if self.sleeping:
-                self.log.info('Stopped Sleeping')
-                self.clearOverride()
-            self.sleeping = False
+    def actuateZone(self, active_zone):
+        if active_zone is None:
+            self.log.info("Turning off the sprinklers")
         else:
-            # we went back to sleep
-            if not self.sleeping:
-                self.log.info('Started Sleeping')
-                self.clearOverride()
-            self.sleeping = True
+            self.log.info('setting new zone to %s, "%s"', str(active_zone), zones[active_zone][1])
 
-        try:
-            url = 'http://api.thingspeak.com/channels/' + settings.Get('thingspeak_location_channel') + '/feeds/last.json'
-            url += '?key=' + settings.Get('thingspeak_location_api_key')
-            new_away = ("0" == json.load(urllib2.urlopen(url))['field1'])
-            if new_away != self.away:
-                if new_away:
-                    self.log.info('Setting to away')
-                else:
-                    self.log.info('Setting to home')
-                self.clearOverride()
-            self.away = new_away
-        except Exception as e:
-            # swallow any exceptions, we don't want the thermostat to break if there is no Internet
-            self.log.exception(e)
-            pass
-
-        new_temp_range = self.temperatureRange
-        if self.sleeping:
-            new_temp_range = (settings.Get("heatTempSleeping"), settings.Get("coolTempSleeping"))
-        else:
-            if self.away:
-                new_temp_range = (settings.Get("heatTempAway"), settings.Get("coolTempAway"))
-            else:
-                new_temp_range = (settings.Get("heatTempComfortable"), settings.Get("coolTempComfortable"))
-
-        if new_temp_range != self.temperatureRange:
-            if settings.Get('doCool'):
-                self.log.info('Changed temperature range to %0.1f...%0.1f' % new_temp_range)
-            else:
-                self.log.info('Changed temperature to %0.1f' % new_temp_range[0])
-            self.temperatureRange = new_temp_range
-
-        if self.overrideTemperatureType is not None:
-            return self.overrideTemperatureRange
-        else:
-            return self.temperatureRange
-
-    def clearOverride(self):
-        if self.overrideTemperatureType == 'temporary':
-            self.log.info('removing temperature override.')
-            self.overrideTemperatureRange = None
-            self.overrideTemperatureType = None
-
-    def setOverride(self, temperatureRangeTuple, temporary, permanent):
-        """ Set an override. Either temporary, or permanent. """
-        if not temporary and not permanent:
-            self.overrideTemperatureRange = None
-            self.overrideTemperatureType = None
-            self.log.info("Clearing temperature override")
-
-        if temporary:
-            self.overrideTemperatureType = 'temporary'
-            self.overrideTemperatureRange = temperatureRangeTuple
-            if settings.Get('doCool'):
-                self.log.info('Setting temporary override to %0.1f..%0.1f' % temperatureRangeTuple)
-            else:
-                self.log.info('Setting temporary override to %0.1f' % temperatureRangeTuple[0])
-
-        if permanent:
-            self.overrideTemperatureType = 'permanent'
-            self.overrideTemperatureRange = temperatureRangeTuple
-            if settings.Get('doCool'):
-                self.log.info('Setting permanent override to %0.1f..%0.1f' % temperatureRangeTuple)
-            else:
-                self.log.info('Setting permanent override to %0.1f' % temperatureRangeTuple[0])
+        if self.previous_zone is not None:
+            self.hwio.output(zones[self.previous_zone][0], True)
+        if active_zone is not None:
+            self.hwio.output(zones[active_zone][0], False)
+        if active_zone is None:
+             sendemail(settings.Get("email_from"), settings.Get("email_to").split(','), [],'Sprinklers ran', '', settings.Get("email_from"), settings.Get("email_passw"))
+        self.previous_zone = active_zone
 
     def speak(self):
         """ Record last data to thingspeak. """
@@ -344,6 +248,7 @@ class Sprinkler(threading.Thread):
             # don't log to thing speak.
             return
 
+        raise InputError("I don't support this for the sprinkler yet")
         channelData = {}
         channelData['key'] = settings.Get("thingspeak_api_key")
 
@@ -374,14 +279,12 @@ class Sprinkler(threading.Thread):
         with self.plotDataLock:
             return copy.deepcopy(self.recentHistory[-1])
 
-
     def getPlotHistory(self):
         ''' returns a dictionary with variables defined for the updater template.'''
         # store this information in key-value pairs so that the template engine can find them.
         updaterInfo = \
         {
             "zoneHistory" : '',
-
             "updateTimeHistory" : '',
             "memHistory" : '',
         }
@@ -389,7 +292,7 @@ class Sprinkler(threading.Thread):
         with self.plotDataLock:
             for data in self.plotData:
                 updaterInfo['zoneHistory']   += '[ %f, %f],' % (data["time"] - (time.timezone * 1000.0), data["active_zone"])
-                updaterInfo['updateTimeHistory']    += '[ %f, %d],' % (data["time"] - (time.timezone * 1000.0), data["lastUpdateTime"])
+                updaterInfo['updateTimeHistory']    += '[ %f, %d],' % (data["time"] - (time.timezone * 1000.0), data["py_uptime_ms"])
                 updaterInfo['memHistory']           += '[ %f, %d],' % (data["time"] - (time.timezone * 1000.0), data["linux_free_mem_perc"])
 
         # Add the outside brackets to each plot data.

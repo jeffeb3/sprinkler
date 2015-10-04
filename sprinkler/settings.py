@@ -37,16 +37,7 @@ def FillEmptiesWithDefaults():
     default_settings = {}
 
     # These are the initial settings for the configuration page.
-    default_settings["doHeat"] = True
-    default_settings["doCool"] = True
-
-    default_settings["heatTempComfortable"] = 68.0
-    default_settings["heatTempSleeping"] = 62.0
-    default_settings["heatTempAway"] = 62.0
-
-    default_settings["coolTempComfortable"] = 76.0
-    default_settings["coolTempSleeping"] = 72.0
-    default_settings["coolTempAway"] = 78.0
+    default_settings["doWater"] = True
 
     default_settings["doEmail"] = True
     default_settings["smtp"] = 'smtp.gmail.com:587'
@@ -56,10 +47,6 @@ def FillEmptiesWithDefaults():
     default_settings["email_restart"] = True
     default_settings["email_oor"] = True
 
-    for day in DAYS:
-        default_settings[day + "Night"] = 1320
-        default_settings[day + "Morn"] = 360
-
     default_settings["weather_api_key"] = ''
     default_settings["weather_state"] = 'CO'
     default_settings["weather_city"] = 'Denver'
@@ -68,9 +55,6 @@ def FillEmptiesWithDefaults():
     default_settings["thingspeak_api_key"] = ''
     default_settings["thingspeak_location_api_key"] = ''
     default_settings["thingspeak_location_channel"] = ''
-
-    # secret settings (not on the web page).
-    default_settings["arduino_addr"] = "localhost"
 
     global settingsLock
     global settings

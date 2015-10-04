@@ -41,13 +41,13 @@
                     <h1>Active Zone: <span id="activeZone">?</span> <span id="onStatus" style="color:#4444FF"> ... ON!</span></h1>
 
                     <fieldset data-role="controlgroup">
-                    % for zone in zones:
-                    %     zoneVar = zone.replace(' ','')
-                        <label for="override{{zoneVar}}">Turn On {{zone}} ({{zoneVar}})</label>
-                        <input type="radio" name="override{{zoneVar}}" id="override{{zoneVar}}" value="over" />
+                    % for zonenum, zonepair in zones.items():
+                        <label for="override{{zonenum}}">Turn On {{zonepair[1]}}</label>
+                        <input class="overrideZones" type="radio" name="override" id="override{{zonenum}}" value="over" data-zone='{{zonenum}}'/>
                     % end
+                    <label for="clearOverride">All Off</label>
+                    <input type="radio" name="override" id="clearOverride" value="Clear" data-zone='0'/>
                     </fieldset>
-                    <input type="button" id="heatClearOverride" value="Clear" />
                 </div>
 
                 <a href="#" data-role="button" data-inline="true" id="plotTimeAll">All</a>
@@ -110,59 +110,8 @@
                 <div data-role="collapsible" data-collapsed="true">
                     <h1>General</h1>
                     <label for="doHeat">Enable Watering:</label>
-                    <input type="checkbox" data-role="flipswitch" name="doHeat" id="doHeat" value=1 checked="true">
+                    <input type="checkbox" data-role="flipswitch" name="doWater" id="doWater" value=1 checked="true">
                 </div>
-
-                <div data-role="collapsible">
-                    <h1>Temperatures</h1>
-                    <ul data-role="listview" data-inset="true">
-                        <li data-role="list-divider">Temerature Presets</li>
-                        <li>
-                            <div data-role="rangeslider">
-                                <label for="heatTempComfortable">Comfortable Temperature:</label>
-                                <input type="range" name="heatTempComfortable" id="heatTempComfortable" value="{{settings['heatTempComfortable']}}" min="60" max="90">
-                                <input type="range" name="coolTempComfortable" id="coolTempComfortable" value="{{settings['coolTempComfortable']}}" min="60" max="90">
-                            </div>
-                        </li>
-                        <li>
-                            <div data-role="rangeslider">
-                                <label for="heatTempSleeping">Sleeping Temperature:</label>
-                                <input type="range" name="heatTempSleeping" id="heatTempSleeping" value="{{settings['heatTempSleeping']}}" min="60" max="90">
-                                <input type="range" name="coolTempSleeping" id="coolTempSleeping" value="{{settings['coolTempSleeping']}}" min="60" max="90">
-                            </div>
-                        </li>
-                        <li>
-                            <div data-role="rangeslider">
-                                <label for="heatTempAway">Away Temperature:</label>
-                                <input type="range" name="heatTempAway" id="heatTempAway" value="{{settings['heatTempAway']}}" min="60" max="90">
-                                <input type="range" name="coolTempAway" id="coolTempAway" value="{{settings['coolTempAway']}}" min="60" max="90">
-                            </div>
-                        </li>
-                    </ul>
-               </div>
-
-                <div data-role="collapsible">
-                    <h1>Awake Times</h1>
-                    <ul data-role="listview" id="sleepTimes" data-inset="true">
-                        % for day in days:
-                        <li data-role="list-divider">{{day}}:</li>
-                        <li>
-                            <table><tbody><tr>
-                                <!-- OMG, this is driving me crazy! I'll just do it in python! -->
-                                <!-- TODO, redo this, again, it is toooooo hard to use-->
-                                <td><p class="morning-time">{{times[day + 'Morn']}}</p></td>
-                                <td width="100%">
-                                    <div data-role="rangeslider" data-mini="true" class="no-number">
-                                        <input type="range" name="{{day}}Morn"  id="{{day}}Morn"  data-mini="true" value="{{settings[day + 'Morn' ]}}" min="0" max="1439" step="5">
-                                        <input type="range" name="{{day}}Night" id="{{day}}Night" data-mini="true" value="{{settings[day + 'Night']}}" min="0" max="1439" step="5">
-                                    </div>
-                                </td>
-                                <td><p class="night-time">{{times[day + 'Night']}}</p></td>
-                            </tr></tbody></table>
-                        </li>
-                        % end
-                    </ul>
-               </div>
 
                 <div data-role="collapsible" data-collapsed="true">
                     <h1>Email Alerts</h1>
@@ -194,7 +143,6 @@
                     <input type="text" name="weather_city" id="weather_city" placeholder="Denver" data-clear-btn="true"></input>
                     <label for="weather_api_key">API key for <a href="http://www.wunderground.com/weather/api/d/pricing.html" class="ui-btn ui-btn-inline">Wunderground.com </a></label>
                     <input type="text" name="weather_api_key" id="weather_api_key" data-clear-btn="true"></input>
-
                 </div>
 
                 <div data-role="collapsible" data-collapsed="true">
