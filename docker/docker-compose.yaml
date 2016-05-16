@@ -1,0 +1,11 @@
+version: '2'
+services:
+  sprinkler:
+    build: .
+    devices: 
+      - "/dev/mem:/dev/mem"
+    cap_add:
+      - SYS_RAWIO
+    ports:
+      - "8080:8080"
+    restart: always
