@@ -9,3 +9,6 @@ services:
     ports:
       - "8080:8080"
     restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - /etc/timezone:/etc/timezone
