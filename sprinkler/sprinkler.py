@@ -169,7 +169,7 @@ class Sprinkler(threading.Thread):
     def ComputeProgram(self):
         # TODO get these from the config file/settings instead.
         zones = [1, 2, 3, 4]
-        minutes = [36, 27, 0, 21]
+        minutes = [36, 36, 0, 21]
         starttime = 10
         cycles = 3
 
